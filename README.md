@@ -1,28 +1,28 @@
-AWS Transit Gateway Setup using Terraform
+# AWS Transit Gateway Setup using Terraform
 This Terraform configuration provisions an AWS Transit Gateway (TGW) and connects it to multiple manually created VPCs, as well as an on-premises network via a site-to-site VPN.
 
-📦 Resources Provisioned
-🛠 Transit Gateway
+# 📦 Resources Provisioned
+#🛠 Transit Gateway
 Resource: aws_ec2_transit_gateway.tgw
 
 Provisions a centralized Transit Gateway to enable routing between attached VPCs and external networks (e.g., on-premises).
 
-🛠 VPC Attachments
+# 🛠 VPC Attachments
 Resource: aws_ec2_transit_gateway_vpc_attachment
 
 Attaches each VPC in var.vpc_ids to the TGW using the corresponding private subnets from var.private_subnets.
 
-🛠 VPN Gateway (VGW)
+# 🛠 VPN Gateway (VGW)
 Resource: aws_vpn_gateway.vpn_gw
 
 Creates a VPN Gateway and attaches it to the first VPC in the list to facilitate the VPN connection.
 
-🛠 Customer Gateway (CGW)
+# 🛠 Customer Gateway (CGW)
 Resource: aws_customer_gateway.cgw
 
 Defines the on-premises customer gateway using the provided IP address, ASN, and connection type.
 
-🛠 VPN Connection
+# 🛠 VPN Connection
 Resource: aws_vpn_connection.vpn_connection
 
 Establishes a site-to-site VPN between the Transit Gateway and the Customer Gateway.
