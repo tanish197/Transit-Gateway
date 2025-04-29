@@ -1,68 +1,80 @@
 AWS Transit Gateway Setup using Terraform
-This Terraform configuration provisions an AWS Transit Gateway (TGW) and connects it to multiple manually created VPCs. It also establishes a site-to-site VPN connection to an on-premises network through a VPN Gateway and Customer Gateway.
+This Terraform configuration provisions an AWS Transit Gateway (TGW) and connects it to multiple manually created VPCs, as well as an on-premises network via a site-to-site VPN.
 
-🛠 Resources Created
-1. Transit Gateway
-Creates a centralized AWS Transit Gateway (aws_ec2_transit_gateway.tgw) to enable routing between attached VPCs and on-premises networks.
+📦 Resources Provisioned
+🛠 Transit Gateway
+Resource: aws_ec2_transit_gateway.tgw
 
-2. VPC Attachments
-For each VPC in var.vpc_ids, a aws_ec2_transit_gateway_vpc_attachment is created to connect the VPC to the Transit Gateway. These attachments use the specified private subnet IDs.
+Provisions a centralized Transit Gateway to enable routing between attached VPCs and external networks (e.g., on-premises).
 
-3. VPN Gateway (VGW)
-Creates a VPN Gateway (aws_vpn_gateway.vpn_gw) and attaches it to the first VPC in var.vpc_ids.
+🛠 VPC Attachments
+Resource: aws_ec2_transit_gateway_vpc_attachment
 
-4. Customer Gateway (CGW)
-Defines a Customer Gateway (aws_customer_gateway.cgw) for the on-premises network, with provided IP address, ASN, and connection type.
+Attaches each VPC in var.vpc_ids to the TGW using the corresponding private subnets from var.private_subnets.
 
-5. VPN Connection
-Establishes a VPN connection (aws_vpn_connection.vpn_connection) between the Customer Gateway and the Transit Gateway.
+🛠 VPN Gateway (VGW)
+Resource: aws_vpn_gateway.vpn_gw
 
-6. Transit Gateway Route Table
-Creates a custom TGW route table (aws_ec2_transit_gateway_route_table.tgw_route_table) for managing routing between VPCs and VPN.
+Creates a VPN Gateway and attaches it to the first VPC in the list to facilitate the VPN connection.
 
-7. TGW Routes
-Creates routes in the TGW route table to enable VPC-to-VPC communication via the TGW.
+🛠 Customer Gateway (CGW)
+Resource: aws_customer_gateway.cgw
 
-📥 Input Variables
-vpc_ids: List of VPC IDs to attach to the Transit Gateway.
+Defines the on-premises customer gateway using the provided IP address, ASN, and connection type.
 
-private_subnets: List of private subnet ID lists corresponding to each VPC.
+🛠 VPN Connection
+Resource: aws_vpn_connection.vpn_connection
 
-vpc_cidr_blocks: List of CIDR blocks for each VPC, used in routing.
+Establishes a site-to-site VPN between the Transit Gateway and the Customer Gateway.
 
-customer_gateway_bgp_asn: BGP ASN for the on-prem Customer Gateway.
+🛠 Transit Gateway Route Table
+Resource: aws_ec2_transit_gateway_route_table.tgw_route_table
 
-customer_gateway_ip: Public IP address of the Customer Gateway.
+Manages custom routes for traffic between VPCs and to/from the VPN connection.
 
-vpn_connection_type: VPN connection type (typically "ipsec.1").
+🛠 TGW Routes
+Automatically creates routes for inter-VPC and VPN traffic using a round-robin routing logic.
 
-🔧 Required Networking Configuration
-On the On-Premises Side:
-✅ Open UDP Ports 500 and 4500 in the firewall to allow IPsec/IKE traffic:
+🔧 Input Variables
+
+Variable	Description
+vpc_ids	List of VPC IDs to be attached to the Transit Gateway
+private_subnets	Nested list of private subnet IDs corresponding to each VPC
+vpc_cidr_blocks	List of CIDR blocks for each VPC, used for routing
+customer_gateway_bgp_asn	BGP ASN for the on-premises Customer Gateway
+customer_gateway_ip	Public IP address of the Customer Gateway
+vpn_connection_type	Type of VPN connection (typically "ipsec.1")
+🔐 Networking Configuration
+On the On-Premises Side
+Ensure your firewall and routing configuration supports IPsec:
 
 bash
 Copy
 Edit
+# Open necessary ports
 sudo iptables -A INPUT -p udp --dport 500 -j ACCEPT
 sudo iptables -A INPUT -p udp --dport 4500 -j ACCEPT
-✅ Add a route to AWS VPC CIDRs through the VPN tunnel or associated ENI:
 
-bash
-Copy
-Edit
+# Add route to AWS VPC CIDRs through the VPN tunnel
 sudo ip route add <VPC_CIDR> via <Tunnel_Endpoint_IP>
-On the AWS Side:
-✅ Attach the VPN Gateway to the first VPC using aws_vpn_gateway.vpn_gw.
+On the AWS Side
+Attach the VPN Gateway to the first VPC.
 
-✅ Ensure Security Groups and NACLs allow VPN traffic (UDP 500, 4500 and ESP - protocol 50).
+Update Security Groups and Network ACLs to allow:
+
+UDP ports 500 and 4500
+
+Protocol 50 (ESP)
 
 🧭 Routing Notes
-The configuration uses a round-robin approach to create routes between VPCs. Adjust the logic if you require more specific routing strategies.
+Uses round-robin logic for route propagation between VPCs.
 
-You may also want to add static routes from VPC route tables pointing to the Transit Gateway for inter-VPC traffic.
+You may add static routes in individual VPC route tables pointing to the Transit Gateway for direct inter-VPC communication.
 
-✅ Example Terraform Usage
-h
+Custom routing logic can be implemented for advanced routing requirements.
+
+✅ Example Terraform Module Usage
+hcl
 Copy
 Edit
 module "tgw_setup" {
@@ -72,6 +84,13 @@ module "tgw_setup" {
   private_subnets        = [["subnet-a1", "subnet-a2"], ["subnet-b1", "subnet-b2"]]
   vpc_cidr_blocks        = ["10.0.0.0/16", "10.1.0.0/16"]
   customer_gateway_bgp_asn = 65001
-  customer_gateway_ip      = "203.0.113.1"
-  vpn_connection_type      = "ipsec.1"
+  customer_gateway_ip    = "203.0.113.1"
+  vpn_connection_type    = "ipsec.1"
 }
+📘 Additional Notes
+Ensure all referenced subnet IDs and VPCs already exist.
+
+Consider enabling route propagation in VPC route tables if needed.
+
+CloudWatch logs and tunnel monitoring can be added to improve visibility and reliability.
+
